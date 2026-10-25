@@ -24,6 +24,21 @@ public interface TestCaseRepository extends JpaRepository<TestCase, Long> {
                           @Param("status") String status,
                           Pageable pageable);
 
+    @Query("select t from TestCase t where t.projectId = :projectId " +
+            "and not exists (select pc.id from TestPlanCase pc where pc.planId = :planId and pc.caseId = t.id) " +
+            "and (:moduleId is null or t.moduleId = :moduleId) " +
+            "and (:kw = '' or lower(t.title) like lower(concat('%', :kw, '%')) " +
+            "or lower(t.caseNo) like lower(concat('%', :kw, '%'))) " +
+            "and (:priority = '' or t.priority = :priority) " +
+            "and (:status = '' or t.status = :status)")
+    Page<TestCase> searchAvailable(@Param("projectId") Long projectId,
+                                   @Param("planId") Long planId,
+                                   @Param("moduleId") Long moduleId,
+                                   @Param("kw") String kw,
+                                   @Param("priority") String priority,
+                                   @Param("status") String status,
+                                   Pageable pageable);
+
     List<TestCase> findByProjectIdOrderByIdAsc(Long projectId);
 
     long countByProjectId(Long projectId);

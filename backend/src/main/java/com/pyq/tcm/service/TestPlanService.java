@@ -4,9 +4,11 @@ import com.pyq.tcm.common.BizException;
 import com.pyq.tcm.common.PageResult;
 import com.pyq.tcm.entity.TestCase;
 import com.pyq.tcm.entity.TestPlan;
+import com.pyq.tcm.entity.TestPlanCase;
 import com.pyq.tcm.entity.TestRun;
 import com.pyq.tcm.repository.ProjectRepository;
 import com.pyq.tcm.repository.TestCaseRepository;
+import com.pyq.tcm.repository.TestPlanCaseRepository;
 import com.pyq.tcm.repository.TestPlanRepository;
 import com.pyq.tcm.repository.TestRunRepository;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,17 +31,21 @@ import java.util.stream.Collectors;
 public class TestPlanService {
 
     private static final Set<String> RUN_STATUSES = Set.of("PASS", "FAIL", "BLOCKED", "SKIPPED");
+    private static final int MAX_CASES_PER_ADD = 500;
 
     private final TestPlanRepository testPlanRepository;
+    private final TestPlanCaseRepository testPlanCaseRepository;
     private final TestCaseRepository testCaseRepository;
     private final TestRunRepository testRunRepository;
     private final ProjectRepository projectRepository;
 
     public TestPlanService(TestPlanRepository testPlanRepository,
+                           TestPlanCaseRepository testPlanCaseRepository,
                            TestCaseRepository testCaseRepository,
                            TestRunRepository testRunRepository,
                            ProjectRepository projectRepository) {
         this.testPlanRepository = testPlanRepository;
+        this.testPlanCaseRepository = testPlanCaseRepository;
         this.testCaseRepository = testCaseRepository;
         this.testRunRepository = testRunRepository;
         this.projectRepository = projectRepository;
@@ -72,6 +79,7 @@ public class TestPlanService {
         payload.setId(null);
         payload.setName(payload.getName().trim());
         payload.setCreatedBy(creator);
+        payload.setCasesInitialized(true);
         return testPlanRepository.save(payload);
     }
 
@@ -93,12 +101,13 @@ public class TestPlanService {
     public void delete(Long id) {
         TestPlan plan = get(id);
         testRunRepository.deleteByPlanId(id);
+        testPlanCaseRepository.deleteByPlanId(id);
         testPlanRepository.delete(plan);
     }
 
     public Map<String, Object> detail(Long planId) {
         TestPlan plan = get(planId);
-        List<TestCase> cases = testCaseRepository.findByProjectIdOrderByIdAsc(plan.getProjectId());
+        List<TestCase> cases = selectedCases(planId);
         Map<Long, TestRun> runs = testRunRepository.findByPlanId(planId).stream()
                 .collect(Collectors.toMap(TestRun::getCaseId, Function.identity(), (a, b) -> b));
 
@@ -128,11 +137,81 @@ public class TestPlanService {
         return result;
     }
 
+    public PageResult<TestCase> availableCases(Long planId, Long moduleId, String keyword,
+                                               String priority, String status, int page, int size) {
+        TestPlan plan = get(planId);
+        Page<TestCase> result = testCaseRepository.searchAvailable(
+                plan.getProjectId(),
+                planId,
+                moduleId,
+                keyword == null ? "" : keyword.trim(),
+                priority == null ? "" : priority,
+                status == null ? "" : status,
+                PageRequest.of(Math.max(page, 1) - 1, clamp(size),
+                        Sort.by(Sort.Direction.DESC, "updatedAt")));
+        return PageResult.of(result);
+    }
+
+    @Transactional
+    public int addCases(Long planId, List<Long> caseIds) {
+        TestPlan plan = get(planId);
+        List<Long> ids = caseIds == null ? List.of() : caseIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            throw new BizException("请选择要添加的用例");
+        }
+        if (ids.size() > MAX_CASES_PER_ADD) {
+            throw new BizException("单次最多添加 " + MAX_CASES_PER_ADD + " 条用例");
+        }
+
+        List<TestCase> cases = testCaseRepository.findAllById(ids);
+        if (cases.size() != ids.size()) {
+            throw new BizException("存在已删除的用例，请刷新后重试");
+        }
+        for (TestCase testCase : cases) {
+            if (!plan.getProjectId().equals(testCase.getProjectId())) {
+                throw new BizException("用例「" + testCase.getCaseNo() + "」不属于当前计划的项目");
+            }
+        }
+
+        Set<Long> existing = testPlanCaseRepository.findByPlanIdOrderByCaseIdAsc(planId).stream()
+                .map(TestPlanCase::getCaseId)
+                .collect(Collectors.toSet());
+        List<TestPlanCase> links = new ArrayList<>();
+        for (Long caseId : ids) {
+            if (existing.contains(caseId)) {
+                continue;
+            }
+            TestPlanCase link = new TestPlanCase();
+            link.setPlanId(planId);
+            link.setCaseId(caseId);
+            links.add(link);
+        }
+        if (!links.isEmpty()) {
+            testPlanCaseRepository.saveAll(links);
+        }
+        return links.size();
+    }
+
+    @Transactional
+    public void removeCase(Long planId, Long caseId) {
+        get(planId);
+        TestPlanCase link = testPlanCaseRepository.findByPlanIdAndCaseId(planId, caseId)
+                .orElseThrow(() -> new BizException(404, "该用例不在当前计划中"));
+        testRunRepository.deleteByPlanIdAndCaseId(planId, caseId);
+        testPlanCaseRepository.delete(link);
+    }
+
     @Transactional
     public TestRun submitRun(Long planId, Long caseId, String status, String remark, String executor) {
         TestPlan plan = get(planId);
         if (caseId == null) {
             throw new BizException("请选择测试用例");
+        }
+        if (!testPlanCaseRepository.existsByPlanIdAndCaseId(planId, caseId)) {
+            throw new BizException("该用例未加入当前计划，请先添加后再执行");
         }
         TestCase testCase = testCaseRepository.findById(caseId)
                 .orElseThrow(() -> new BizException(404, "测试用例不存在"));
@@ -159,8 +238,8 @@ public class TestPlanService {
     }
 
     public Map<String, Object> stats(Long planId) {
-        TestPlan plan = get(planId);
-        List<TestCase> cases = testCaseRepository.findByProjectIdOrderByIdAsc(plan.getProjectId());
+        get(planId);
+        List<TestCase> cases = selectedCases(planId);
         Map<Long, TestRun> runs = testRunRepository.findByPlanId(planId).stream()
                 .collect(Collectors.toMap(TestRun::getCaseId, Function.identity(), (a, b) -> b));
         long pass = 0;
@@ -192,6 +271,42 @@ public class TestPlanService {
         result.put("skipped", skipped);
         result.put("passRate", executed == 0 ? 0.0 : round(pass * 100.0 / executed));
         return result;
+    }
+
+    @Transactional
+    public void initializeLegacyPlans() {
+        for (TestPlan plan : testPlanRepository.findUninitializedPlans()) {
+            if (testPlanCaseRepository.findByPlanIdOrderByCaseIdAsc(plan.getId()).isEmpty()) {
+                List<TestPlanCase> links = testCaseRepository.findByProjectIdOrderByIdAsc(plan.getProjectId()).stream()
+                        .map(testCase -> {
+                            TestPlanCase link = new TestPlanCase();
+                            link.setPlanId(plan.getId());
+                            link.setCaseId(testCase.getId());
+                            return link;
+                        })
+                        .toList();
+                if (!links.isEmpty()) {
+                    testPlanCaseRepository.saveAll(links);
+                }
+            }
+            plan.setCasesInitialized(true);
+            testPlanRepository.save(plan);
+        }
+    }
+
+    private List<TestCase> selectedCases(Long planId) {
+        List<Long> caseIds = testPlanCaseRepository.findByPlanIdOrderByCaseIdAsc(planId).stream()
+                .map(TestPlanCase::getCaseId)
+                .toList();
+        if (caseIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, TestCase> caseMap = testCaseRepository.findAllById(caseIds).stream()
+                .collect(Collectors.toMap(TestCase::getId, Function.identity()));
+        return caseIds.stream()
+                .map(caseMap::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private Map<String, Object> calculateStats(List<Map<String, Object>> items) {

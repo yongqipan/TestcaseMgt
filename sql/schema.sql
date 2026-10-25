@@ -76,8 +76,19 @@ CREATE TABLE IF NOT EXISTS test_plans (
     end_date DATE DEFAULT NULL,
     created_by VARCHAR(50) DEFAULT NULL,
     created_at DATETIME DEFAULT NULL,
+    cases_initialized TINYINT(1) DEFAULT NULL,
     PRIMARY KEY (id),
     KEY idx_test_plans_project (project_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+CREATE TABLE IF NOT EXISTS test_plan_cases (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    plan_id BIGINT NOT NULL,
+    case_id BIGINT NOT NULL,
+    created_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_test_plan_cases_plan_case (plan_id, case_id),
+    KEY idx_test_plan_cases_case (case_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE IF NOT EXISTS test_runs (

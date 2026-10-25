@@ -20,4 +20,7 @@ public interface TestPlanRepository extends JpaRepository<TestPlan, Long> {
     long countByProjectId(Long projectId);
 
     List<TestPlan> findTop5ByOrderByCreatedAtDesc();
+
+    @Query("select p from TestPlan p where p.casesInitialized is null or p.casesInitialized = false")
+    List<TestPlan> findUninitializedPlans();
 }

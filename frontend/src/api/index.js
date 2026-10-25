@@ -35,6 +35,9 @@ export const planApi = {
   create: (payload) => http.post('/test-plans', payload),
   update: (id, payload) => http.put(`/test-plans/${id}`, payload),
   remove: (id) => http.delete(`/test-plans/${id}`),
+  availableCases: (id, params) => http.get(`/test-plans/${id}/available-cases`, { params }),
+  addCases: (id, caseIds) => http.post(`/test-plans/${id}/cases`, { caseIds }),
+  removeCase: (id, caseId) => http.delete(`/test-plans/${id}/cases/${caseId}`),
   submitRun: (id, payload) => http.post(`/test-plans/${id}/runs`, payload)
 }
 

@@ -41,6 +41,9 @@ public class TestPlan {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "cases_initialized")
+    private Boolean casesInitialized;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
@@ -48,6 +51,9 @@ public class TestPlan {
         }
         if (status == null) {
             status = "PLANNED";
+        }
+        if (casesInitialized == null) {
+            casesInitialized = false;
         }
     }
 
@@ -121,5 +127,13 @@ public class TestPlan {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Boolean getCasesInitialized() {
+        return casesInitialized;
+    }
+
+    public void setCasesInitialized(Boolean casesInitialized) {
+        this.casesInitialized = casesInitialized;
     }
 }

@@ -13,6 +13,7 @@ import com.pyq.tcm.repository.TestCaseRepository;
 import com.pyq.tcm.repository.TestPlanRepository;
 import com.pyq.tcm.repository.TestRunRepository;
 import com.pyq.tcm.repository.UserRepository;
+import com.pyq.tcm.service.TestPlanService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -35,6 +36,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TestPlanRepository testPlanRepository;
     private final TestRunRepository testRunRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TestPlanService testPlanService;
 
     public DataInitializer(UserRepository userRepository,
                            ProjectRepository projectRepository,
@@ -42,7 +44,8 @@ public class DataInitializer implements CommandLineRunner {
                            TestCaseRepository testCaseRepository,
                            TestPlanRepository testPlanRepository,
                            TestRunRepository testRunRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           TestPlanService testPlanService) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.moduleRepository = moduleRepository;
@@ -50,6 +53,7 @@ public class DataInitializer implements CommandLineRunner {
         this.testPlanRepository = testPlanRepository;
         this.testRunRepository = testRunRepository;
         this.passwordEncoder = passwordEncoder;
+        this.testPlanService = testPlanService;
     }
 
     @Override
@@ -59,6 +63,7 @@ public class DataInitializer implements CommandLineRunner {
             seedDemoData();
             log.info("Demo data initialized");
         }
+        testPlanService.initializeLegacyPlans();
     }
 
     private void ensureAdmin() {

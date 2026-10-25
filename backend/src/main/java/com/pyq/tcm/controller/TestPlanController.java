@@ -2,6 +2,7 @@ package com.pyq.tcm.controller;
 
 import com.pyq.tcm.common.ApiResponse;
 import com.pyq.tcm.common.PageResult;
+import com.pyq.tcm.entity.TestCase;
 import com.pyq.tcm.entity.TestPlan;
 import com.pyq.tcm.entity.TestRun;
 import com.pyq.tcm.service.TestPlanService;
@@ -9,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,6 +39,30 @@ public class TestPlanController {
     @GetMapping("/{id}/cases")
     public ApiResponse<Map<String, Object>> detail(@PathVariable Long id) {
         return ApiResponse.ok(testPlanService.detail(id));
+    }
+
+    @GetMapping("/{id}/available-cases")
+    public ApiResponse<PageResult<TestCase>> availableCases(@PathVariable Long id,
+                                                            @RequestParam(required = false) Long moduleId,
+                                                            @RequestParam(defaultValue = "") String keyword,
+                                                            @RequestParam(defaultValue = "") String priority,
+                                                            @RequestParam(defaultValue = "") String status,
+                                                            @RequestParam(defaultValue = "1") int page,
+                                                            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(testPlanService.availableCases(id, moduleId, keyword, priority, status, page, size));
+    }
+
+    @PostMapping("/{id}/cases")
+    public ApiResponse<Map<String, Object>> addCases(@PathVariable Long id,
+                                                     @RequestBody CaseIdsRequest request) {
+        int added = testPlanService.addCases(id, request.caseIds());
+        return ApiResponse.ok(Map.of("added", added));
+    }
+
+    @DeleteMapping("/{id}/cases/{caseId}")
+    public ApiResponse<Void> removeCase(@PathVariable Long id, @PathVariable Long caseId) {
+        testPlanService.removeCase(id, caseId);
+        return ApiResponse.ok();
     }
 
     @PostMapping
@@ -73,5 +99,8 @@ public class TestPlanController {
     }
 
     public record RunRequest(Long caseId, String status, String remark, String executor) {
+    }
+
+    public record CaseIdsRequest(List<Long> caseIds) {
     }
 }

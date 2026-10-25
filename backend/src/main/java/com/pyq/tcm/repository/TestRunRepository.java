@@ -16,6 +16,8 @@ public interface TestRunRepository extends JpaRepository<TestRun, Long> {
 
     void deleteByPlanId(Long planId);
 
+    void deleteByPlanIdAndCaseId(Long planId, Long caseId);
+
     long countByStatus(String status);
 
     List<TestRun> findTop8ByOrderByExecutedAtDesc();

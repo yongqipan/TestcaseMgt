@@ -8,6 +8,7 @@ import com.pyq.tcm.entity.TestCase;
 import com.pyq.tcm.repository.ModuleRepository;
 import com.pyq.tcm.repository.ProjectRepository;
 import com.pyq.tcm.repository.TestCaseRepository;
+import com.pyq.tcm.repository.TestPlanCaseRepository;
 import com.pyq.tcm.repository.TestRunRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,15 +30,18 @@ public class TestCaseService {
     private final ProjectRepository projectRepository;
     private final ModuleRepository moduleRepository;
     private final TestRunRepository testRunRepository;
+    private final TestPlanCaseRepository testPlanCaseRepository;
 
     public TestCaseService(TestCaseRepository testCaseRepository,
                            ProjectRepository projectRepository,
                            ModuleRepository moduleRepository,
-                           TestRunRepository testRunRepository) {
+                           TestRunRepository testRunRepository,
+                           TestPlanCaseRepository testPlanCaseRepository) {
         this.testCaseRepository = testCaseRepository;
         this.projectRepository = projectRepository;
         this.moduleRepository = moduleRepository;
         this.testRunRepository = testRunRepository;
+        this.testPlanCaseRepository = testPlanCaseRepository;
     }
 
     public PageResult<TestCase> page(Long projectId, Long moduleId, String keyword,
@@ -91,6 +95,7 @@ public class TestCaseService {
     public void delete(Long id) {
         TestCase testCase = get(id);
         testRunRepository.deleteByCaseId(id);
+        testPlanCaseRepository.deleteByCaseId(id);
         testCaseRepository.delete(testCase);
     }
 

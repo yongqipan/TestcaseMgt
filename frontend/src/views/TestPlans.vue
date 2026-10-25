@@ -100,9 +100,12 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { planApi, projectApi } from '../api'
+
+const router = useRouter()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -211,12 +214,15 @@ async function submit() {
       if (editingId.value) {
         await planApi.update(editingId.value, payload)
         ElMessage.success('计划已更新')
+        dialogVisible.value = false
+        load()
       } else {
-        await planApi.create(payload)
-        ElMessage.success('计划已创建')
+        const created = await planApi.create(payload)
+        ElMessage.success('计划已创建，请选择要执行的用例')
+        dialogVisible.value = false
+        load()
+        router.push({ path: `/plans/${created.id}`, query: { addCases: '1' } })
       }
-      dialogVisible.value = false
-      load()
     } finally {
       saving.value = false
     }

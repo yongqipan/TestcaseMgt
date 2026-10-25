@@ -10,6 +10,7 @@
           </el-tag>
         </div>
         <div class="toolbar" style="margin: 0">
+          <el-button type="primary" :icon="Plus" @click="openAddCases">添加用例</el-button>
           <el-button :icon="Refresh" @click="load">刷新</el-button>
         </div>
       </div>
@@ -67,7 +68,11 @@
         </el-select>
       </div>
 
-      <el-table :data="filteredCases" stripe>
+      <el-table
+        :data="filteredCases"
+        stripe
+        :empty-text="detail.stats?.total ? '暂无数据' : '尚未选择用例，点击右上角「添加用例」'"
+      >
         <el-table-column type="expand">
           <template #default="{ row }">
             <div class="expand">
@@ -103,13 +108,91 @@
         <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.remark || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openRun(row)">记录结果</el-button>
+            <el-button link type="danger" @click="removeCase(row)">移除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </div>
+
+    <el-dialog v-model="addDialogVisible" title="添加测试用例" width="920px" top="5vh">
+      <div class="toolbar add-toolbar">
+        <el-input
+          v-model="addFilters.keyword"
+          placeholder="搜索标题或编号"
+          clearable
+          style="width: 220px"
+          :prefix-icon="Search"
+          @keyup.enter="searchAvailable"
+          @clear="searchAvailable"
+        />
+        <el-tree-select
+          v-model="addFilters.moduleId"
+          :data="moduleTree"
+          :props="{ label: 'name', children: 'children' }"
+          node-key="id"
+          check-strictly
+          clearable
+          placeholder="全部模块"
+          style="width: 180px"
+          @change="searchAvailable"
+        />
+        <el-select v-model="addFilters.priority" placeholder="优先级" clearable style="width: 120px" @change="searchAvailable">
+          <el-option v-for="item in priorities" :key="item" :label="item" :value="item" />
+        </el-select>
+        <el-button type="primary" @click="searchAvailable">查询</el-button>
+      </div>
+
+      <el-table
+        :key="availableTableKey"
+        ref="availableTableRef"
+        v-loading="availableLoading"
+        :data="availableRows"
+        row-key="id"
+        stripe
+        height="380"
+        empty-text="当前项目暂无可添加的用例"
+        @selection-change="onAvailableSelectionChange"
+      >
+        <el-table-column type="selection" width="48" reserve-selection />
+        <el-table-column prop="caseNo" label="编号" width="140" />
+        <el-table-column prop="title" label="用例标题" min-width="260" show-overflow-tooltip />
+        <el-table-column label="优先级" width="90">
+          <template #default="{ row }">
+            <el-tag :type="priorityTag(row.priority)" effect="light">{{ row.priority }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">{{ caseStatusLabel(row.status) }}</template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="availablePage"
+          v-model:page-size="availableSize"
+          :total="availableTotal"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @current-change="loadAvailable"
+          @size-change="onAvailableSizeChange"
+        />
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <span class="muted">已选 {{ availableSelection.length }} 条</span>
+          <div>
+            <el-button @click="addDialogVisible = false">取消</el-button>
+            <el-button type="primary" :loading="adding" :disabled="!availableSelection.length" @click="submitAddCases">
+              添加
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="runDialogVisible" title="记录执行结果" width="520px">
       <p class="run-title">{{ currentCase?.caseNo }} · {{ currentCase?.title }}</p>
@@ -136,12 +219,15 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
-import { planApi } from '../api'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { moduleApi, planApi } from '../api'
+
+const priorities = ['P0', 'P1', 'P2', 'P3']
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const detail = ref({})
@@ -149,6 +235,19 @@ const filterStatus = ref('')
 const runDialogVisible = ref(false)
 const currentCase = ref(null)
 const runForm = reactive({ status: 'PASS', remark: '' })
+
+const moduleTree = ref([])
+const addDialogVisible = ref(false)
+const availableLoading = ref(false)
+const adding = ref(false)
+const availableTableRef = ref()
+const availableTableKey = ref(0)
+const availableRows = ref([])
+const availableTotal = ref(0)
+const availablePage = ref(1)
+const availableSize = ref(10)
+const availableSelection = ref([])
+const addFilters = reactive({ keyword: '', moduleId: null, priority: '' })
 
 const planId = computed(() => route.params.id)
 
@@ -188,6 +287,10 @@ function runTag(status) {
   return { UNTESTED: 'info', PASS: 'success', FAIL: 'danger', BLOCKED: 'warning', SKIPPED: 'info' }[status] || 'info'
 }
 
+function caseStatusLabel(status) {
+  return { DRAFT: '草稿', ACTIVE: '就绪', DEPRECATED: '已废弃' }[status] || status || '-'
+}
+
 async function load() {
   loading.value = true
   try {
@@ -195,6 +298,89 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadModules() {
+  if (!detail.value.plan?.projectId) {
+    moduleTree.value = []
+    return
+  }
+  moduleTree.value = await moduleApi.tree(detail.value.plan.projectId)
+}
+
+async function openAddCases() {
+  addFilters.keyword = ''
+  addFilters.moduleId = null
+  addFilters.priority = ''
+  availablePage.value = 1
+  availableSelection.value = []
+  availableRows.value = []
+  availableTotal.value = 0
+  availableTableKey.value += 1
+  addDialogVisible.value = true
+  await loadModules()
+  await loadAvailable()
+}
+
+async function loadAvailable() {
+  if (!detail.value.plan?.projectId) {
+    return
+  }
+  availableLoading.value = true
+  try {
+    const data = await planApi.availableCases(planId.value, {
+      keyword: addFilters.keyword,
+      moduleId: addFilters.moduleId || undefined,
+      priority: addFilters.priority,
+      page: availablePage.value,
+      size: availableSize.value
+    })
+    availableRows.value = data.list
+    availableTotal.value = data.total
+  } finally {
+    availableLoading.value = false
+  }
+}
+
+function searchAvailable() {
+  availablePage.value = 1
+  loadAvailable()
+}
+
+function onAvailableSizeChange() {
+  availablePage.value = 1
+  loadAvailable()
+}
+
+function onAvailableSelectionChange(rows) {
+  availableSelection.value = rows
+}
+
+async function submitAddCases() {
+  if (!availableSelection.value.length) {
+    return
+  }
+  adding.value = true
+  try {
+    const result = await planApi.addCases(planId.value, availableSelection.value.map((item) => item.id))
+    ElMessage.success(`已添加 ${result.added ?? availableSelection.value.length} 条用例`)
+    addDialogVisible.value = false
+    load()
+  } finally {
+    adding.value = false
+  }
+}
+
+async function removeCase(row) {
+  const executed = row.runStatus && row.runStatus !== 'UNTESTED'
+  await ElMessageBox.confirm(
+    `确认从计划中移除用例「${row.title}」？${executed ? '该用例已有执行记录，将一并删除。' : ''}`,
+    '移除用例',
+    { type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消' }
+  )
+  await planApi.removeCase(planId.value, row.id)
+  ElMessage.success('用例已移除')
+  load()
 }
 
 function openRun(row) {
@@ -220,7 +406,13 @@ async function submitRun() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  if (route.query.addCases === '1') {
+    router.replace({ path: route.path, query: {} })
+    openAddCases()
+  }
+})
 </script>
 
 <style scoped>
@@ -289,5 +481,11 @@ onMounted(load)
 .run-title {
   margin: 0 0 16px;
   font-weight: 600;
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 </style>
