@@ -10,6 +10,12 @@
           </el-tag>
         </div>
         <div class="toolbar" style="margin: 0">
+          <el-button :icon="Edit" @click="openEdit">编辑</el-button>
+          <el-tooltip :disabled="canDelete" content="计划已开始，不能删除" placement="top">
+            <span>
+              <el-button type="danger" :icon="Delete" :disabled="!canDelete" @click="removePlan">删除计划</el-button>
+            </span>
+          </el-tooltip>
           <el-button type="primary" :icon="Plus" @click="openAddCases">添加用例</el-button>
           <el-button :icon="Refresh" @click="load">刷新</el-button>
         </div>
@@ -111,7 +117,11 @@
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openRun(row)">记录结果</el-button>
-            <el-button link type="danger" @click="removeCase(row)">移除</el-button>
+            <el-tooltip :disabled="!isCaseExecuted(row)" content="该用例已执行，不能移除" placement="top">
+              <span>
+                <el-button link type="danger" :disabled="isCaseExecuted(row)" @click="removeCase(row)">移除</el-button>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -194,6 +204,40 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="editDialogVisible" title="编辑计划" width="560px">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="90px">
+        <el-form-item label="计划名称" prop="name">
+          <el-input v-model="editForm.name" placeholder="请输入计划名称" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="editForm.status" style="width: 100%">
+            <el-option label="未开始" value="PLANNED" />
+            <el-option label="进行中" value="IN_PROGRESS" />
+            <el-option label="已完成" value="COMPLETED" />
+            <el-option label="已归档" value="ARCHIVED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="起止日期">
+          <el-date-picker
+            v-model="editForm.range"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="editForm.description" type="textarea" :rows="3" placeholder="本轮测试的范围与目标" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="submitEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="runDialogVisible" title="记录执行结果" width="520px">
       <p class="run-title">{{ currentCase?.caseNo }} · {{ currentCase?.title }}</p>
       <el-form label-width="80px">
@@ -221,7 +265,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { ArrowLeft, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { moduleApi, planApi } from '../api'
 
 const priorities = ['P0', 'P1', 'P2', 'P3']
@@ -235,6 +279,14 @@ const filterStatus = ref('')
 const runDialogVisible = ref(false)
 const currentCase = ref(null)
 const runForm = reactive({ status: 'PASS', remark: '' })
+
+const editDialogVisible = ref(false)
+const editSaving = ref(false)
+const editFormRef = ref()
+const editForm = reactive({ name: '', status: 'PLANNED', range: [], description: '' })
+const editRules = {
+  name: [{ required: true, message: '请输入计划名称', trigger: 'blur' }]
+}
 
 const moduleTree = ref([])
 const addDialogVisible = ref(false)
@@ -250,6 +302,15 @@ const availableSelection = ref([])
 const addFilters = reactive({ keyword: '', moduleId: null, priority: '' })
 
 const planId = computed(() => route.params.id)
+
+const canDelete = computed(() => {
+  const plan = detail.value.plan || {}
+  return (plan.status || 'PLANNED') === 'PLANNED' && !(detail.value.stats?.executed > 0)
+})
+
+function isCaseExecuted(row) {
+  return Boolean(row.runStatus && row.runStatus !== 'UNTESTED')
+}
 
 const filteredCases = computed(() => {
   const cases = detail.value.cases || []
@@ -298,6 +359,50 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function openEdit() {
+  const plan = detail.value.plan || {}
+  editForm.name = plan.name || ''
+  editForm.status = plan.status || 'PLANNED'
+  editForm.range = plan.startDate && plan.endDate ? [plan.startDate, plan.endDate] : []
+  editForm.description = plan.description || ''
+  editDialogVisible.value = true
+}
+
+async function submitEdit() {
+  await editFormRef.value.validate(async (valid) => {
+    if (!valid) {
+      return
+    }
+    editSaving.value = true
+    try {
+      await planApi.update(planId.value, {
+        projectId: detail.value.plan?.projectId,
+        name: editForm.name,
+        status: editForm.status,
+        description: editForm.description,
+        startDate: editForm.range?.[0] || null,
+        endDate: editForm.range?.[1] || null
+      })
+      ElMessage.success('计划已更新')
+      editDialogVisible.value = false
+      load()
+    } finally {
+      editSaving.value = false
+    }
+  })
+}
+
+async function removePlan() {
+  await ElMessageBox.confirm(`确认删除计划「${detail.value.plan?.name}」？删除后不可恢复。`, '删除确认', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消'
+  })
+  await planApi.remove(planId.value)
+  ElMessage.success('计划已删除')
+  router.push('/plans')
 }
 
 async function loadModules() {
@@ -372,12 +477,11 @@ async function submitAddCases() {
 }
 
 async function removeCase(row) {
-  const executed = row.runStatus && row.runStatus !== 'UNTESTED'
-  await ElMessageBox.confirm(
-    `确认从计划中移除用例「${row.title}」？${executed ? '该用例已有执行记录，将一并删除。' : ''}`,
-    '移除用例',
-    { type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消' }
-  )
+  await ElMessageBox.confirm(`确认从计划中移除用例「${row.title}」？`, '移除用例', {
+    type: 'warning',
+    confirmButtonText: '移除',
+    cancelButtonText: '取消'
+  })
   await planApi.removeCase(planId.value, row.id)
   ElMessage.success('用例已移除')
   load()

@@ -89,6 +89,10 @@ public class TestPlanService {
         if (payload.getName() == null || payload.getName().isBlank()) {
             throw new BizException("计划名称不能为空");
         }
+        if (payload.getStatus() != null && "PLANNED".equals(payload.getStatus())
+                && (!"PLANNED".equals(plan.getStatus()) || testRunRepository.existsByPlanId(id))) {
+            throw new BizException("计划已开始，不能退回未开始");
+        }
         plan.setName(payload.getName().trim());
         plan.setDescription(payload.getDescription());
         plan.setStatus(payload.getStatus());
@@ -100,6 +104,10 @@ public class TestPlanService {
     @Transactional
     public void delete(Long id) {
         TestPlan plan = get(id);
+        if ((plan.getStatus() != null && !"PLANNED".equals(plan.getStatus()))
+                || testRunRepository.existsByPlanId(id)) {
+            throw new BizException("测试计划已开始，不能删除");
+        }
         testRunRepository.deleteByPlanId(id);
         testPlanCaseRepository.deleteByPlanId(id);
         testPlanRepository.delete(plan);
@@ -200,7 +208,9 @@ public class TestPlanService {
         get(planId);
         TestPlanCase link = testPlanCaseRepository.findByPlanIdAndCaseId(planId, caseId)
                 .orElseThrow(() -> new BizException(404, "该用例不在当前计划中"));
-        testRunRepository.deleteByPlanIdAndCaseId(planId, caseId);
+        if (testRunRepository.findByPlanIdAndCaseId(planId, caseId).isPresent()) {
+            throw new BizException("该用例已执行，不能移除");
+        }
         testPlanCaseRepository.delete(link);
     }
 

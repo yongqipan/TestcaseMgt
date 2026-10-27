@@ -10,6 +10,8 @@ public interface TestRunRepository extends JpaRepository<TestRun, Long> {
 
     List<TestRun> findByPlanId(Long planId);
 
+    boolean existsByPlanId(Long planId);
+
     Optional<TestRun> findByPlanIdAndCaseId(Long planId, Long caseId);
 
     void deleteByCaseId(Long caseId);

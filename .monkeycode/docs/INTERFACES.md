@@ -83,10 +83,10 @@
 | GET | /api/test-plans | 分页查询 | `projectId, keyword, page, size` |
 | POST | /api/test-plans | 新建 | `{ "projectId", "name", "description", "status", "startDate", "endDate" }` |
 | PUT | /api/test-plans/{id} | 更新 | 同上 |
-| DELETE | /api/test-plans/{id} | 删除（级联删除计划用例与执行记录） | - |
+| DELETE | /api/test-plans/{id} | 删除（仅未开始且无执行记录；级联删除计划用例） | - |
 | GET | /api/test-plans/{id}/available-cases | 查询可添加到计划的用例（排除已选） | `moduleId, keyword, priority, status, page, size` |
 | POST | /api/test-plans/{id}/cases | 批量添加用例 | `{ "caseIds": [1, 2] }` |
-| DELETE | /api/test-plans/{id}/cases/{caseId} | 从计划移除用例（同时删除该用例执行记录） | - |
+| DELETE | /api/test-plans/{id}/cases/{caseId} | 从计划移除用例（已执行的用例不允许移除） | - |
 
 ## 执行记录
 
@@ -99,6 +99,8 @@
 `status`：PASS/FAIL/BLOCKED/SKIPPED；同一计划同一用例重复提交时更新原记录。
 
 计划执行范围由 `test_plan_cases` 决定：执行清单、统计与提交校验均只针对已加入计划的用例。历史计划首次启动时自动把项目全部用例绑定到计划。
+
+计划删除限制：仅状态为 `PLANNED` 且没有任何执行记录的计划可以删除；计划一旦开始（状态变更或产生执行记录）则不可删除，也不能改回 `PLANNED`。用例移除限制：已产生执行记录的用例不能从计划中移除。
 
 ## 仪表盘
 

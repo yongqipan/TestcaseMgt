@@ -21,7 +21,7 @@
       <el-button type="primary" @click="reload">查询</el-button>
     </div>
 
-    <el-table v-loading="loading" :data="rows" stripe>
+    <el-table v-loading="loading" :data="rows" stripe class="clickable-table" @row-click="openDetail">
       <el-table-column prop="name" label="计划名称" min-width="200" />
       <el-table-column label="所属项目" width="140">
         <template #default="{ row }">{{ projectName(row.projectId) }}</template>
@@ -36,13 +36,6 @@
       </el-table-column>
       <el-table-column prop="createdBy" label="创建人" width="110" />
       <el-table-column prop="createdAt" label="创建时间" width="180" />
-      <el-table-column label="操作" width="190" fixed="right">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="$router.push(`/plans/${row.id}`)">执行</el-button>
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
-        </template>
-      </el-table-column>
     </el-table>
 
     <div class="pagination">
@@ -57,10 +50,10 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑计划' : '新建计划'" width="560px">
+    <el-dialog v-model="dialogVisible" title="新建计划" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="所属项目" prop="projectId">
-          <el-select v-model="form.projectId" :disabled="Boolean(editingId)" style="width: 100%">
+          <el-select v-model="form.projectId" style="width: 100%">
             <el-option v-for="item in projects" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -101,7 +94,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { planApi, projectApi } from '../api'
 
@@ -118,7 +111,6 @@ const keyword = ref('')
 const projectId = ref(null)
 
 const dialogVisible = ref(false)
-const editingId = ref(null)
 const formRef = ref()
 const form = reactive({
   projectId: null,
@@ -177,7 +169,6 @@ function reload() {
 }
 
 function openCreate() {
-  editingId.value = null
   form.projectId = projectId.value || projects.value[0]?.id || null
   form.name = ''
   form.status = 'PLANNED'
@@ -186,14 +177,8 @@ function openCreate() {
   dialogVisible.value = true
 }
 
-function openEdit(row) {
-  editingId.value = row.id
-  form.projectId = row.projectId
-  form.name = row.name
-  form.status = row.status || 'PLANNED'
-  form.range = row.startDate && row.endDate ? [row.startDate, row.endDate] : []
-  form.description = row.description || ''
-  dialogVisible.value = true
+function openDetail(row) {
+  router.push(`/plans/${row.id}`)
 }
 
 async function submit() {
@@ -211,36 +196,15 @@ async function submit() {
         startDate: form.range?.[0] || null,
         endDate: form.range?.[1] || null
       }
-      if (editingId.value) {
-        await planApi.update(editingId.value, payload)
-        ElMessage.success('计划已更新')
-        dialogVisible.value = false
-        load()
-      } else {
-        const created = await planApi.create(payload)
-        ElMessage.success('计划已创建，请选择要执行的用例')
-        dialogVisible.value = false
-        load()
-        router.push({ path: `/plans/${created.id}`, query: { addCases: '1' } })
-      }
+      const created = await planApi.create(payload)
+      ElMessage.success('计划已创建，请选择要执行的用例')
+      dialogVisible.value = false
+      load()
+      router.push({ path: `/plans/${created.id}`, query: { addCases: '1' } })
     } finally {
       saving.value = false
     }
   })
-}
-
-async function remove(row) {
-  await ElMessageBox.confirm(`确认删除计划「${row.name}」？相关执行记录将一并删除。`, '删除确认', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消'
-  })
-  await planApi.remove(row.id)
-  ElMessage.success('计划已删除')
-  if (rows.value.length === 1 && page.value > 1) {
-    page.value -= 1
-  }
-  load()
 }
 
 onMounted(async () => {
@@ -248,3 +212,9 @@ onMounted(async () => {
   await load()
 })
 </script>
+
+<style scoped>
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+</style>
