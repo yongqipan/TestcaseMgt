@@ -68,6 +68,9 @@ const activeMenu = computed(() => {
   if (route.path.startsWith('/plans')) {
     return '/plans'
   }
+  if (route.path.startsWith('/cases')) {
+    return '/cases'
+  }
   return route.path
 })
 

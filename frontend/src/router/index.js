@@ -38,6 +38,12 @@ const routes = [
         meta: { title: '测试用例' }
       },
       {
+        path: 'cases/:id',
+        name: 'case-detail',
+        component: () => import('../views/CaseDetail.vue'),
+        meta: { title: '用例详情' }
+      },
+      {
         path: 'plans',
         name: 'plans',
         component: () => import('../views/TestPlans.vue'),

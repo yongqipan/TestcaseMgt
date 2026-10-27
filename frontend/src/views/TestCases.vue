@@ -40,24 +40,7 @@
       <el-button type="primary" @click="reload">查询</el-button>
     </div>
 
-    <el-table v-loading="loading" :data="rows" stripe>
-      <el-table-column type="expand">
-        <template #default="{ row }">
-          <div class="expand">
-            <p v-if="row.precondition"><strong>前置条件：</strong>{{ row.precondition }}</p>
-            <div v-if="row.steps && row.steps.length">
-              <strong>测试步骤：</strong>
-              <ol>
-                <li v-for="(step, index) in row.steps" :key="index">
-                  {{ step.action }}
-                  <span class="muted">→ 预期：{{ step.expected || '-' }}</span>
-                </li>
-              </ol>
-            </div>
-            <p v-if="!row.precondition && (!row.steps || !row.steps.length)" class="muted">暂无用例详情</p>
-          </div>
-        </template>
-      </el-table-column>
+    <el-table v-loading="loading" :data="rows" stripe class="clickable-table" @row-click="openDetail">
       <el-table-column prop="caseNo" label="编号" width="140" />
       <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
       <el-table-column label="模块" width="130">
@@ -77,12 +60,6 @@
         </template>
       </el-table-column>
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
-      <el-table-column label="操作" width="150" fixed="right">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
-        </template>
-      </el-table-column>
     </el-table>
 
     <div class="pagination">
@@ -97,97 +74,28 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑用例' : '新建用例'" width="820px" top="6vh">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-row :gutter="12">
-          <el-col :span="16">
-            <el-form-item label="用例标题" prop="title">
-              <el-input v-model="form.title" placeholder="简要描述验证目标" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="所属模块">
-              <el-tree-select
-                v-model="form.moduleId"
-                :data="moduleTree"
-                :props="{ label: 'name', children: 'children' }"
-                node-key="id"
-                check-strictly
-                clearable
-                placeholder="可选"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="12">
-          <el-col :span="8">
-            <el-form-item label="优先级">
-              <el-select v-model="form.priority" style="width: 100%">
-                <el-option v-for="item in priorities" :key="item" :label="item" :value="item" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="用例类型">
-              <el-select v-model="form.type" style="width: 100%">
-                <el-option label="功能测试" value="FUNCTIONAL" />
-                <el-option label="接口测试" value="API" />
-                <el-option label="界面测试" value="UI" />
-                <el-option label="性能测试" value="PERFORMANCE" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="状态">
-              <el-select v-model="form.status" style="width: 100%">
-                <el-option label="草稿" value="DRAFT" />
-                <el-option label="就绪" value="ACTIVE" />
-                <el-option label="已废弃" value="DEPRECATED" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item label="前置条件">
-          <el-input v-model="form.precondition" type="textarea" :rows="2" placeholder="执行该用例前需满足的条件" />
-        </el-form-item>
-
-        <el-form-item label="标签">
-          <el-input v-model="form.tags" placeholder="多个标签用逗号分隔，例如：登录,冒烟" />
-        </el-form-item>
-
-        <el-form-item label="测试步骤">
-          <div class="steps-editor" style="width: 100%">
-            <div v-for="(step, index) in form.steps" :key="index" class="step-row">
-              <div class="step-index">{{ index + 1 }}</div>
-              <el-input v-model="step.action" type="textarea" :rows="2" placeholder="操作步骤" />
-              <el-input v-model="step.expected" type="textarea" :rows="2" placeholder="预期结果" />
-              <el-button text type="danger" :icon="Delete" @click="removeStep(index)" />
-            </div>
-            <el-button text type="primary" :icon="Plus" @click="addStep">添加步骤</el-button>
-          </div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submit">保存</el-button>
-      </template>
-    </el-dialog>
+    <CaseFormDialog
+      v-model="dialogVisible"
+      :project-id="projectId"
+      :module-tree="moduleTree"
+      :case-data="editingCase"
+      @saved="load"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Plus, Search } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
+import CaseFormDialog from '../components/CaseFormDialog.vue'
 import { caseApi, moduleApi, projectApi } from '../api'
+
+const router = useRouter()
 
 const priorities = ['P0', 'P1', 'P2', 'P3']
 
 const loading = ref(false)
-const saving = ref(false)
 const projects = ref([])
 const projectId = ref(null)
 const moduleTree = ref([])
@@ -199,22 +107,7 @@ const size = ref(10)
 const filters = reactive({ keyword: '', moduleId: null, priority: '', status: '' })
 
 const dialogVisible = ref(false)
-const editingId = ref(null)
-const formRef = ref()
-const form = reactive({
-  title: '',
-  moduleId: null,
-  priority: 'P1',
-  type: 'FUNCTIONAL',
-  status: 'ACTIVE',
-  precondition: '',
-  tags: '',
-  steps: []
-})
-
-const rules = {
-  title: [{ required: true, message: '请输入用例标题', trigger: 'blur' }]
-}
+const editingCase = ref(null)
 
 const moduleMap = computed(() => {
   const map = new Map()
@@ -310,112 +203,20 @@ function reload() {
   load()
 }
 
-function resetForm() {
-  form.title = ''
-  form.moduleId = null
-  form.priority = 'P1'
-  form.type = 'FUNCTIONAL'
-  form.status = 'ACTIVE'
-  form.precondition = ''
-  form.tags = ''
-  form.steps = []
-}
-
 function openCreate() {
-  editingId.value = null
-  resetForm()
-  addStep()
+  editingCase.value = null
   dialogVisible.value = true
 }
 
-function openEdit(row) {
-  editingId.value = row.id
-  form.title = row.title
-  form.moduleId = row.moduleId ?? null
-  form.priority = row.priority || 'P1'
-  form.type = row.type || 'FUNCTIONAL'
-  form.status = row.status || 'ACTIVE'
-  form.precondition = row.precondition || ''
-  form.tags = row.tags || ''
-  form.steps = (row.steps || []).map((step) => ({ action: step.action, expected: step.expected }))
-  if (form.steps.length === 0) {
-    addStep()
-  }
-  dialogVisible.value = true
-}
-
-function addStep() {
-  form.steps.push({ action: '', expected: '' })
-}
-
-function removeStep(index) {
-  form.steps.splice(index, 1)
-}
-
-async function submit() {
-  await formRef.value.validate(async (valid) => {
-    if (!valid) {
-      return
-    }
-    if (!projectId.value) {
-      ElMessage.warning('请先选择项目')
-      return
-    }
-    saving.value = true
-    try {
-      const payload = {
-        projectId: projectId.value,
-        moduleId: form.moduleId,
-        title: form.title,
-        priority: form.priority,
-        type: form.type,
-        status: form.status,
-        precondition: form.precondition,
-        tags: form.tags,
-        steps: form.steps.filter((step) => step.action && step.action.trim())
-      }
-      if (editingId.value) {
-        await caseApi.update(editingId.value, payload)
-        ElMessage.success('用例已更新')
-      } else {
-        await caseApi.create(payload)
-        ElMessage.success('用例已创建')
-      }
-      dialogVisible.value = false
-      load()
-    } finally {
-      saving.value = false
-    }
-  })
-}
-
-async function remove(row) {
-  await ElMessageBox.confirm(`确认删除用例「${row.title}」？相关执行记录将一并删除。`, '删除确认', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消'
-  })
-  await caseApi.remove(row.id)
-  ElMessage.success('用例已删除')
-  if (rows.value.length === 1 && page.value > 1) {
-    page.value -= 1
-  }
-  load()
+function openDetail(row) {
+  router.push(`/cases/${row.id}`)
 }
 
 onMounted(loadProjects)
 </script>
 
 <style scoped>
-.expand {
-  padding: 4px 24px 12px;
-  font-size: 13px;
-  color: #4a5568;
-}
-
-.expand ol {
-  margin: 8px 0 0;
-  padding-left: 20px;
-  line-height: 1.9;
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
 }
 </style>
