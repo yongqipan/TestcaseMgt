@@ -73,22 +73,13 @@
         @size-change="load"
       />
     </div>
-
-    <CaseFormDialog
-      v-model="dialogVisible"
-      :project-id="projectId"
-      :module-tree="moduleTree"
-      :case-data="editingCase"
-      @saved="load"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search } from '@element-plus/icons-vue'
-import CaseFormDialog from '../components/CaseFormDialog.vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { caseApi, moduleApi, projectApi } from '../api'
 
 const router = useRouter()
@@ -105,9 +96,6 @@ const page = ref(1)
 const size = ref(10)
 
 const filters = reactive({ keyword: '', moduleId: null, priority: '', status: '' })
-
-const dialogVisible = ref(false)
-const editingCase = ref(null)
 
 const moduleMap = computed(() => {
   const map = new Map()
@@ -204,8 +192,7 @@ function reload() {
 }
 
 function openCreate() {
-  editingCase.value = null
-  dialogVisible.value = true
+  router.push('/cases/new')
 }
 
 function openDetail(row) {

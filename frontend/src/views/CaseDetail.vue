@@ -11,48 +11,56 @@
           <el-tag :type="statusTag(detail.status)" effect="plain">{{ statusLabel(detail.status) }}</el-tag>
         </div>
         <div class="toolbar" style="margin: 0">
-          <el-button type="primary" :icon="Edit" @click="editVisible = true">编辑</el-button>
+          <el-button type="primary" :icon="Edit" @click="startEdit">编辑</el-button>
           <el-button type="danger" plain :icon="Delete" @click="remove">删除</el-button>
         </div>
       </div>
 
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="用例编号">{{ detail.caseNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="所属项目">{{ projectName }}</el-descriptions-item>
-        <el-descriptions-item label="所属模块">{{ moduleName }}</el-descriptions-item>
-        <el-descriptions-item label="用例类型">{{ typeLabel(detail.type) }}</el-descriptions-item>
-        <el-descriptions-item label="创建人">{{ detail.creator || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ detail.updatedAt || '-' }}</el-descriptions-item>
-      </el-descriptions>
-
-      <div class="section">
-        <h4>前置条件</h4>
-        <p class="content">{{ detail.precondition || '无' }}</p>
+      <div v-if="editing">
+        <CaseForm
+          ref="formRef"
+          :project-id="detail.projectId"
+          :module-tree="moduleTree"
+          :case-data="detail"
+          @save="save"
+        />
+        <div class="edit-actions">
+          <el-button @click="cancelEdit">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="submit">保存</el-button>
+        </div>
       </div>
 
-      <div class="section">
-        <h4>测试步骤</h4>
-        <el-table v-if="steps.length" :data="steps" border>
-          <el-table-column type="index" label="#" width="60" />
-          <el-table-column prop="action" label="操作步骤" min-width="280" />
-          <el-table-column prop="expected" label="预期结果" min-width="280" />
-        </el-table>
-        <p v-else class="muted">暂无用例步骤</p>
-      </div>
+      <template v-else>
+        <el-descriptions :column="3" border>
+          <el-descriptions-item label="用例编号">{{ detail.caseNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="所属项目">{{ projectName }}</el-descriptions-item>
+          <el-descriptions-item label="所属模块">{{ moduleName }}</el-descriptions-item>
+          <el-descriptions-item label="用例类型">{{ typeLabel(detail.type) }}</el-descriptions-item>
+          <el-descriptions-item label="创建人">{{ detail.creator || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ detail.updatedAt || '-' }}</el-descriptions-item>
+        </el-descriptions>
 
-      <div v-if="tags.length" class="section">
-        <h4>标签</h4>
-        <el-tag v-for="tag in tags" :key="tag" class="tag" type="info" effect="plain">{{ tag }}</el-tag>
-      </div>
+        <div class="section">
+          <h4>前置条件</h4>
+          <p class="content">{{ detail.precondition || '无' }}</p>
+        </div>
+
+        <div class="section">
+          <h4>测试步骤</h4>
+          <el-table v-if="steps.length" :data="steps" border>
+            <el-table-column type="index" label="#" width="60" />
+            <el-table-column prop="action" label="操作步骤" min-width="280" />
+            <el-table-column prop="expected" label="预期结果" min-width="280" />
+          </el-table>
+          <p v-else class="muted">暂无用例步骤</p>
+        </div>
+
+        <div v-if="tags.length" class="section">
+          <h4>标签</h4>
+          <el-tag v-for="tag in tags" :key="tag" class="tag" type="info" effect="plain">{{ tag }}</el-tag>
+        </div>
+      </template>
     </div>
-
-    <CaseFormDialog
-      v-model="editVisible"
-      :project-id="detail.projectId"
-      :module-tree="moduleTree"
-      :case-data="detail"
-      @saved="load"
-    />
   </div>
 </template>
 
@@ -61,16 +69,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Delete, Edit } from '@element-plus/icons-vue'
-import CaseFormDialog from '../components/CaseFormDialog.vue'
+import CaseForm from '../components/CaseForm.vue'
 import { caseApi, moduleApi, projectApi } from '../api'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const saving = ref(false)
+const editing = ref(false)
 const detail = ref({})
 const moduleTree = ref([])
 const projects = ref([])
-const editVisible = ref(false)
+const formRef = ref()
 
 const steps = computed(() => detail.value.steps || [])
 
@@ -137,6 +147,31 @@ async function load() {
   }
 }
 
+function startEdit() {
+  editing.value = true
+}
+
+function cancelEdit() {
+  editing.value = false
+  load()
+}
+
+async function save(payload) {
+  saving.value = true
+  try {
+    await caseApi.update(detail.value.id, payload)
+    ElMessage.success('用例已更新')
+    editing.value = false
+    await load()
+  } finally {
+    saving.value = false
+  }
+}
+
+function submit() {
+  formRef.value.submit()
+}
+
 async function remove() {
   await ElMessageBox.confirm(
     `确认删除用例「${detail.value.title}」？相关执行记录将一并删除。`,
@@ -177,5 +212,12 @@ onMounted(load)
 
 .tag {
   margin-right: 8px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 </style>
