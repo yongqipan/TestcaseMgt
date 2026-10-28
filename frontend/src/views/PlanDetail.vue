@@ -163,10 +163,10 @@
         row-key="id"
         stripe
         height="380"
-        empty-text="当前项目暂无可添加的用例"
+        empty-text="当前项目暂无匹配的用例"
         @selection-change="onAvailableSelectionChange"
       >
-        <el-table-column type="selection" width="48" reserve-selection />
+        <el-table-column type="selection" width="48" :selectable="isSelectable" reserve-selection />
         <el-table-column prop="caseNo" label="编号" width="140" />
         <el-table-column prop="title" label="用例标题" min-width="260" show-overflow-tooltip />
         <el-table-column label="优先级" width="90">
@@ -176,6 +176,12 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">{{ caseStatusLabel(row.status) }}</template>
+        </el-table-column>
+        <el-table-column label="计划内" width="90">
+          <template #default="{ row }">
+            <el-tag v-if="row.selected" type="success" effect="light">已加入</el-tag>
+            <span v-else class="muted">-</span>
+          </template>
         </el-table-column>
       </el-table>
 
@@ -266,7 +272,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { moduleApi, planApi } from '../api'
+import { caseApi, moduleApi, planApi } from '../api'
 
 const priorities = ['P0', 'P1', 'P2', 'P3']
 
@@ -433,18 +439,24 @@ async function loadAvailable() {
   }
   availableLoading.value = true
   try {
-    const data = await planApi.availableCases(planId.value, {
+    const data = await caseApi.page({
+      projectId: detail.value.plan.projectId,
       keyword: addFilters.keyword,
       moduleId: addFilters.moduleId || undefined,
       priority: addFilters.priority,
       page: availablePage.value,
       size: availableSize.value
     })
-    availableRows.value = data.list
+    const selectedIds = new Set((detail.value.cases || []).map((item) => item.id))
+    availableRows.value = data.list.map((item) => ({ ...item, selected: selectedIds.has(item.id) }))
     availableTotal.value = data.total
   } finally {
     availableLoading.value = false
   }
+}
+
+function isSelectable(row) {
+  return !row.selected
 }
 
 function searchAvailable() {

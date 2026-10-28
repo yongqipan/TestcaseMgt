@@ -31,7 +31,7 @@ export const caseApi = {
 
 export const planApi = {
   page: (params) => http.get('/test-plans', { params }),
-  detail: (id) => http.get(`/test-plans/${id}`),
+  detail: (id) => http.get(`/test-plans/${id}/cases`),
   create: (payload) => http.post('/test-plans', payload),
   update: (id, payload) => http.put(`/test-plans/${id}`, payload),
   remove: (id) => http.delete(`/test-plans/${id}`),
