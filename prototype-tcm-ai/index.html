@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>TCM 测试管理 · AI 深度集成原型</title>
+<link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">测</div>
+      <div class="brand-text">
+        <strong>TCM 测试管理</strong>
+        <span>AI Native Test Management</span>
+      </div>
+    </div>
+
+    <div class="tenant-box">
+      <div class="tenant-label">当前项目</div>
+      <button class="tenant-btn" id="projectBtn">
+        <span class="tenant-dot"></span>
+        <span>测试管理系统</span>
+        <span class="tenant-tag">AI 已开通</span>
+      </button>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-group">概览</div>
+      <a class="nav-item" data-view="dashboard"><span class="ico">▦</span>工作台</a>
+
+      <div class="nav-group">测试资产</div>
+      <a class="nav-item" data-view="projects"><span class="ico">▤</span>项目管理</a>
+      <a class="nav-item" data-view="modules"><span class="ico">▥</span>模块管理</a>
+      <a class="nav-item" data-view="cases"><span class="ico">▣</span>测试用例<span class="badge-ai">AI</span></a>
+      <a class="nav-item" data-view="plans"><span class="ico">▦</span>测试计划</a>
+
+      <div class="nav-group">AI 能力</div>
+      <a class="nav-item" data-view="aigen"><span class="ico">✚</span>AI 生成用例<span class="badge-ai">AI</span></a>
+      <a class="nav-item" data-view="aireview"><span class="ico">◎</span>用例质量评审<span class="badge-ai">AI</span></a>
+      <a class="nav-item" data-view="aireport"><span class="ico">◔</span>AI 测试报告<span class="badge-ai">AI</span></a>
+
+      <div class="nav-group">AI 平台</div>
+      <a class="nav-item" data-view="aimodels"><span class="ico">◇</span>模型设置</a>
+      <a class="nav-item" data-view="aiprompts"><span class="ico">▧</span>Prompt 模板</a>
+      <a class="nav-item" data-view="ailogs"><span class="ico">≡</span>调用日志</a>
+      <a class="nav-item" data-view="aiusage"><span class="ico">Σ</span>用量与成本</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="ai-status">
+        <span class="pulse"></span>
+        <div>
+          <strong>模型服务正常</strong>
+          <span>DeepSeek-V3 · 队列 1 / 20</span>
+        </div>
+      </div>
+      <div class="quota">
+        <div class="quota-row"><span>本月 Token</span><b>128.6 万 / 500 万</b></div>
+        <div class="bar"><i style="width:26%"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="row-flex">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开菜单">☰</button>
+        <div class="crumb" id="crumb">工作台</div>
+      </div>
+      <div class="top-actions">
+        <div class="user">
+          <div class="avatar">测</div>
+          <div class="user-meta">
+            <strong>测试负责人 · 王敏</strong>
+            <span>管理员 · 已启用 AI</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="view" id="view"></main>
+  </div>
+
+  <aside class="ai-dock" id="aiDock">
+    <div class="dock-head">
+      <div class="dock-id">
+        <div class="dock-logo">AI</div>
+        <div>
+          <strong>TCM AI 助手</strong>
+          <span>当前模型 · DeepSeek-V3</span>
+        </div>
+      </div>
+      <div class="dock-actions">
+        <button class="dock-icon" id="dockReset" title="清空对话">⟳</button>
+        <button class="dock-icon" id="dockClose" title="收起">»</button>
+      </div>
+    </div>
+    <div class="dock-body">
+      <section class="dock-chat">
+        <div class="chat-scroll" id="chatScroll"></div>
+        <div class="chat-quick" id="chatQuick">
+          <button data-prompt="帮我根据这段需求生成测试用例">生成用例</button>
+          <button data-prompt="评审当前用例的质量与覆盖率">质量评审</button>
+          <button data-prompt="分析这次计划失败用例的根因">失败根因</button>
+          <button data-prompt="生成本次测试计划的测试报告">生成报告</button>
+        </div>
+        <div class="chat-drop" id="chatDrop">
+          <span>拖拽需求文档 / 接口文档 / 日志到对话框</span>
+        </div>
+        <div class="chat-input">
+          <button class="attach-btn" id="attachBtn" title="上传需求文档">＋</button>
+          <textarea id="aiInput" rows="3" placeholder="描述需求，或点 ＋ 上传需求 / 接口文档…"></textarea>
+          <button class="send-btn" id="aiSend">发送</button>
+        </div>
+        <input type="file" id="fileInput" multiple hidden accept=".pdf,.doc,.docx,.md,.txt,.json,.yaml,.yml,.log" />
+      </section>
+    </div>
+  </aside>
+
+  <div class="dock-mask" id="dockMask"></div>
+</div>
+<button class="dock-toggle" id="dockToggle" aria-label="切换 AI 对话框" title="隐藏 / 显示 AI 对话框">
+  <span class="dt-arrow"></span>
+</button>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="modal-root" id="modalRoot"></div>
+<div class="sidebar-mask" id="sidebarMask"></div>
+
+<script src="app.js?v=4"></script>
+</body>
+</html>
