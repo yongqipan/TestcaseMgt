@@ -25,6 +25,7 @@ public class TestCaseService {
     private static final List<String> PRIORITIES = List.of("P0", "P1", "P2", "P3");
     private static final List<String> TYPES = List.of("FUNCTIONAL", "API", "UI", "PERFORMANCE");
     private static final List<String> STATUSES = List.of("DRAFT", "ACTIVE", "DEPRECATED");
+    private static final List<String> SOURCES = List.of("MANUAL", "AI");
 
     private final TestCaseRepository testCaseRepository;
     private final ProjectRepository projectRepository;
@@ -124,6 +125,9 @@ public class TestCaseService {
         }
         if (testCase.getStatus() == null || !STATUSES.contains(testCase.getStatus())) {
             testCase.setStatus("ACTIVE");
+        }
+        if (testCase.getSource() == null || !SOURCES.contains(testCase.getSource())) {
+            testCase.setSource("MANUAL");
         }
         if (testCase.getSteps() != null) {
             for (CaseStep step : testCase.getSteps()) {

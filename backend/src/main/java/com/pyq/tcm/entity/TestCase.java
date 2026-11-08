@@ -52,6 +52,15 @@ public class TestCase {
     @Column(length = 50)
     private String creator;
 
+    @Column(nullable = false, length = 20)
+    private String source;
+
+    @Column(name = "ai_confidence")
+    private Integer aiConfidence;
+
+    @Column(name = "ai_review_score")
+    private Integer aiReviewScore;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -73,6 +82,9 @@ public class TestCase {
         }
         if (status == null) {
             status = "ACTIVE";
+        }
+        if (source == null) {
+            source = "MANUAL";
         }
         if (steps == null) {
             steps = new ArrayList<>();
@@ -178,6 +190,30 @@ public class TestCase {
 
     public void setCreator(String creator) {
         this.creator = creator;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public Integer getAiConfidence() {
+        return aiConfidence;
+    }
+
+    public void setAiConfidence(Integer aiConfidence) {
+        this.aiConfidence = aiConfidence;
+    }
+
+    public Integer getAiReviewScore() {
+        return aiReviewScore;
+    }
+
+    public void setAiReviewScore(Integer aiReviewScore) {
+        this.aiReviewScore = aiReviewScore;
     }
 
     public LocalDateTime getCreatedAt() {
