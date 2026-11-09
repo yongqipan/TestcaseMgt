@@ -72,6 +72,19 @@ public class AiQuotaService {
         }
     }
 
+    @Transactional
+    public AiQuota update(com.pyq.tcm.ai.dto.QuotaRequest request) {
+        AiQuota quota = current();
+        if (request.getTokenQuota() != null) {
+            quota.setTokenQuota(Math.max(0, request.getTokenQuota()));
+        }
+        if (request.getAlertThreshold() != null) {
+            int threshold = Math.max(1, Math.min(100, request.getAlertThreshold()));
+            quota.setAlertThreshold(threshold);
+        }
+        return quotaRepository.save(quota);
+    }
+
     private BigDecimal estimateCost(AiModel model, AiChatResult result) {
         BigDecimal input = model.getInputPrice() == null ? BigDecimal.ZERO : model.getInputPrice();
         BigDecimal output = model.getOutputPrice() == null ? BigDecimal.ZERO : model.getOutputPrice();
