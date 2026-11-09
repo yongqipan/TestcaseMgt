@@ -7,6 +7,8 @@ import com.pyq.tcm.entity.TestCase;
 import com.pyq.tcm.entity.TestPlan;
 import com.pyq.tcm.entity.TestRun;
 import com.pyq.tcm.entity.User;
+import com.pyq.tcm.ai.entity.AiPromptTemplate;
+import com.pyq.tcm.ai.repository.AiPromptTemplateRepository;
 import com.pyq.tcm.repository.ModuleRepository;
 import com.pyq.tcm.repository.ProjectRepository;
 import com.pyq.tcm.repository.TestCaseRepository;
@@ -37,6 +39,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TestRunRepository testRunRepository;
     private final PasswordEncoder passwordEncoder;
     private final TestPlanService testPlanService;
+    private final AiPromptTemplateRepository aiPromptTemplateRepository;
 
     public DataInitializer(UserRepository userRepository,
                            ProjectRepository projectRepository,
@@ -45,7 +48,8 @@ public class DataInitializer implements CommandLineRunner {
                            TestPlanRepository testPlanRepository,
                            TestRunRepository testRunRepository,
                            PasswordEncoder passwordEncoder,
-                           TestPlanService testPlanService) {
+                           TestPlanService testPlanService,
+                           AiPromptTemplateRepository aiPromptTemplateRepository) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.moduleRepository = moduleRepository;
@@ -54,6 +58,7 @@ public class DataInitializer implements CommandLineRunner {
         this.testRunRepository = testRunRepository;
         this.passwordEncoder = passwordEncoder;
         this.testPlanService = testPlanService;
+        this.aiPromptTemplateRepository = aiPromptTemplateRepository;
     }
 
     @Override
@@ -64,6 +69,7 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Demo data initialized");
         }
         testPlanService.initializeLegacyPlans();
+        seedAiPrompts();
     }
 
     private void ensureAdmin() {
@@ -77,6 +83,46 @@ public class DataInitializer implements CommandLineRunner {
         user.setRole("ADMIN");
         userRepository.save(user);
         log.info("Default admin account created: admin / admin123");
+    }
+
+    private void seedAiPrompts() {
+        if (aiPromptTemplateRepository.count() > 0) {
+            return;
+        }
+        savePrompt("GENERATE_CASE", "用例生成 Prompt v1",
+                "你是一名资深测试工程师。请基于下面的需求信息，输出高质量的功能测试用例。\n"
+                        + "项目：{{projectName}}\n模块：{{moduleName}}\n需求描述：\n{{requirement}}\n"
+                        + "要求：\n"
+                        + "1. 仅输出 JSON 数组，不要输出额外解释；\n"
+                        + "2. 每个元素包含 title、priority(P0/P1/P2/P3)、type(FUNCTIONAL/UI/API/PERFORMANCE/SECURITY)、"
+                        + "precondition、steps(数组，元素含 action 与 expected)、expected、confidence(0-100)；\n"
+                        + "3. 覆盖正常流、异常流与边界值，去重并保持可执行性。",
+                "projectName,moduleName,requirement");
+        savePrompt("REVIEW_CASE", "用例评审 Prompt v1",
+                "你是一名测试用例评审专家。请评审下面的测试用例，从完整性、可执行性、覆盖率、清晰度四个维度打分（0-100）。\n"
+                        + "用例标题：{{title}}\n前置条件：{{precondition}}\n步骤：{{steps}}\n预期：{{expected}}\n"
+                        + "要求：仅输出 JSON 对象，包含 totalScore、dimensions(对象，含 completeness、executability、coverage、clarity)、"
+                        + "suggestions(字符串数组)。",
+                "title,precondition,steps,expected");
+        savePrompt("GENERATE_REPORT", "测试报告 Prompt v1",
+                "你是一名测试负责人。请根据下面的测试计划执行数据，生成一份中文测试报告。\n"
+                        + "计划名称：{{planName}}\n执行统计：{{statistics}}\n缺陷与备注：{{details}}\n"
+                        + "要求：仅输出 JSON 对象，包含 contentMd(Markdown 正文)、conclusion(结论)、"
+                        + "riskLevel(LOW/MEDIUM/HIGH)、releaseAdvice(GO/CONDITIONAL/NO_GO)。",
+                "planName,statistics,details");
+        log.info("Default AI prompt templates initialized");
+    }
+
+    private void savePrompt(String scene, String name, String content, String variables) {
+        AiPromptTemplate template = new AiPromptTemplate();
+        template.setScene(scene);
+        template.setName(name);
+        template.setContent(content);
+        template.setVariables(variables);
+        template.setVersion(1);
+        template.setEnabled(Boolean.TRUE);
+        template.setUpdatedBy("system");
+        aiPromptTemplateRepository.save(template);
     }
 
     private void seedDemoData() {

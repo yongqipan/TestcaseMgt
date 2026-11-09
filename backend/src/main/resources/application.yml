@@ -28,6 +28,22 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     default-property-inclusion: non_null
 
+tcm:
+  ai:
+    connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${AI_READ_TIMEOUT_MS:60000}
+    max-retries: ${AI_MAX_RETRIES:1}
+    circuit-failure-threshold: ${AI_CIRCUIT_FAILURE_THRESHOLD:5}
+    circuit-open-seconds: ${AI_CIRCUIT_OPEN_SECONDS:60}
+    default-token-quota: ${AI_DEFAULT_TOKEN_QUOTA:0}
+    alert-threshold: ${AI_ALERT_THRESHOLD:80}
+    crypto-secret: ${AI_CRYPTO_SECRET:}
+    default-temperature: ${AI_DEFAULT_TEMPERATURE:0.2}
+    default-max-tokens: ${AI_DEFAULT_MAX_TOKENS:2000}
+    default-base-url: ${AI_DEFAULT_BASE_URL:https://api.openai.com/v1}
+    task-pool-size: ${AI_TASK_POOL_SIZE:2}
+    task-queue-capacity: ${AI_TASK_QUEUE_CAPACITY:20}
+
 logging:
   level:
     root: INFO
