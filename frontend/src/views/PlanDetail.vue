@@ -17,6 +17,7 @@
             </span>
           </el-tooltip>
           <el-button type="primary" :icon="Plus" @click="openAddCases">添加用例</el-button>
+          <el-button :icon="DataAnalysis" :loading="reportLoading" @click="generateReport">AI 报告</el-button>
           <el-button :icon="Refresh" @click="load">刷新</el-button>
         </div>
       </div>
@@ -264,6 +265,32 @@
         <el-button type="primary" :loading="saving" @click="submitRun">提交</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="reportVisible" title="AI 测试报告" size="680px">
+      <div v-loading="reportLoading">
+        <div v-if="report" class="report-panel">
+          <div class="report-meta">
+            <el-tag v-if="report.riskLevel" :type="riskTag(report.riskLevel)" effect="light">
+              风险：{{ riskLabel(report.riskLevel) }}
+            </el-tag>
+            <el-tag v-if="report.releaseAdvice" :type="adviceTag(report.releaseAdvice)" effect="light">
+              建议：{{ adviceLabel(report.releaseAdvice) }}
+            </el-tag>
+            <span class="muted">{{ report.createdAt }}</span>
+          </div>
+          <div v-if="report.conclusion" class="report-conclusion">
+            <h4>结论</h4>
+            <p class="pre-wrap">{{ report.conclusion }}</p>
+          </div>
+          <div class="report-content">
+            <h4>报告正文</h4>
+            <div class="markdown" v-html="renderedReport"></div>
+          </div>
+        </div>
+        <div v-else-if="reportError" class="error-text">{{ reportError }}</div>
+        <el-empty v-else description="暂无报告" />
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -271,8 +298,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { caseApi, moduleApi, planApi } from '../api'
+import { ArrowLeft, DataAnalysis, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { aiInsightApi, caseApi, moduleApi, planApi } from '../api'
 
 const priorities = ['P0', 'P1', 'P2', 'P3']
 
@@ -306,6 +333,13 @@ const availablePage = ref(1)
 const availableSize = ref(10)
 const availableSelection = ref([])
 const addFilters = reactive({ keyword: '', moduleId: null, priority: '' })
+
+const reportVisible = ref(false)
+const reportLoading = ref(false)
+const report = ref(null)
+const reportError = ref('')
+
+const renderedReport = computed(() => renderMarkdown(report.value?.contentMd || ''))
 
 const planId = computed(() => route.params.id)
 
@@ -356,6 +390,84 @@ function runTag(status) {
 
 function caseStatusLabel(status) {
   return { DRAFT: '草稿', ACTIVE: '就绪', DEPRECATED: '已废弃' }[status] || status || '-'
+}
+
+function riskLabel(level) {
+  return { LOW: '低', MEDIUM: '中', HIGH: '高' }[level] || level
+}
+
+function riskTag(level) {
+  return { LOW: 'success', MEDIUM: 'warning', HIGH: 'danger' }[level] || 'info'
+}
+
+function adviceLabel(advice) {
+  return { GO: '可发布', CONDITIONAL: '有条件发布', NO_GO: '不可发布' }[advice] || advice
+}
+
+function adviceTag(advice) {
+  return { GO: 'success', CONDITIONAL: 'warning', NO_GO: 'danger' }[advice] || 'info'
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function renderMarkdown(md) {
+  if (!md) {
+    return ''
+  }
+  const lines = escapeHtml(md).split('\n')
+  const html = []
+  let inList = false
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (/^#{1,6}\s+/.test(trimmed)) {
+      if (inList) {
+        html.push('</ul>')
+        inList = false
+      }
+      const level = trimmed.match(/^#+/)[0].length
+      html.push(`<h${level}>${trimmed.replace(/^#+\s+/, '')}</h${level}>`)
+    } else if (/^[-*]\s+/.test(trimmed)) {
+      if (!inList) {
+        html.push('<ul>')
+        inList = true
+      }
+      html.push(`<li>${trimmed.replace(/^[-*]\s+/, '')}</li>`)
+    } else if (trimmed === '') {
+      if (inList) {
+        html.push('</ul>')
+        inList = false
+      }
+    } else {
+      if (inList) {
+        html.push('</ul>')
+        inList = false
+      }
+      html.push(`<p>${trimmed}</p>`)
+    }
+  }
+  if (inList) {
+    html.push('</ul>')
+  }
+  return html.join('')
+}
+
+async function generateReport() {
+  reportVisible.value = true
+  reportLoading.value = true
+  reportError.value = ''
+  report.value = null
+  try {
+    report.value = await aiInsightApi.report({ planId: Number(planId.value), reportType: 'SUMMARY' })
+  } catch (e) {
+    reportError.value = e?.message || '报告生成失败，请检查 AI 模型配置'
+  } finally {
+    reportLoading.value = false
+  }
 }
 
 async function load() {
@@ -603,5 +715,57 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.report-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-conclusion h4,
+.report-content h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.pre-wrap {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #4a5568;
+}
+
+.markdown {
+  line-height: 1.8;
+  color: #4a5568;
+}
+
+.markdown :deep(h1),
+.markdown :deep(h2),
+.markdown :deep(h3),
+.markdown :deep(h4) {
+  margin: 16px 0 8px;
+  color: #1f2a44;
+}
+
+.markdown :deep(p) {
+  margin: 0 0 8px;
+}
+
+.markdown :deep(ul) {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.error-text {
+  color: #e34d59;
 }
 </style>

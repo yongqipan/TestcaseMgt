@@ -60,6 +60,24 @@ const routes = [
         name: 'plan-detail',
         component: () => import('../views/PlanDetail.vue'),
         meta: { title: '计划执行' }
+      },
+      {
+        path: 'ai/generate',
+        name: 'ai-generate',
+        component: () => import('../views/AiGenerate.vue'),
+        meta: { title: 'AI 生成用例' }
+      },
+      {
+        path: 'ai/settings',
+        name: 'ai-settings',
+        component: () => import('../views/AiSettings.vue'),
+        meta: { title: 'AI 模型配置' }
+      },
+      {
+        path: 'ai/monitor',
+        name: 'ai-monitor',
+        component: () => import('../views/AiMonitor.vue'),
+        meta: { title: 'AI 调用监控' }
       }
     ]
   },

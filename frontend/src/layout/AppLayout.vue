@@ -26,6 +26,19 @@
           <el-icon><Calendar /></el-icon>
           <span>测试计划</span>
         </el-menu-item>
+        <el-menu-item index="/ai/generate">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 生成用例</span>
+          <el-tag class="menu-ai-tag" size="small" effect="dark" round>AI</el-tag>
+        </el-menu-item>
+        <el-menu-item index="/ai/settings">
+          <el-icon><Setting /></el-icon>
+          <span>AI 配置</span>
+        </el-menu-item>
+        <el-menu-item index="/ai/monitor">
+          <el-icon><Monitor /></el-icon>
+          <span>AI 调用监控</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -70,6 +83,15 @@ const activeMenu = computed(() => {
   }
   if (route.path.startsWith('/cases')) {
     return '/cases'
+  }
+  if (route.path.startsWith('/ai/generate')) {
+    return '/ai/generate'
+  }
+  if (route.path.startsWith('/ai/settings')) {
+    return '/ai/settings'
+  }
+  if (route.path.startsWith('/ai/monitor')) {
+    return '/ai/monitor'
   }
   return route.path
 })
@@ -117,6 +139,13 @@ async function handleCommand(command) {
 .menu {
   border-right: none;
   padding: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.menu-ai-tag {
+  margin-left: 6px;
+  transform: scale(0.82);
 }
 
 .menu :deep(.el-menu-item) {

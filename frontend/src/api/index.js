@@ -44,3 +44,44 @@ export const planApi = {
 export const dashboardApi = {
   stats: () => http.get('/dashboard/stats')
 }
+
+export const aiAdminApi = {
+  providers: () => http.get('/ai/admin/providers'),
+  createProvider: (payload) => http.post('/ai/admin/providers', payload),
+  updateProvider: (id, payload) => http.put(`/ai/admin/providers/${id}`, payload),
+  removeProvider: (id) => http.delete(`/ai/admin/providers/${id}`),
+  models: () => http.get('/ai/admin/models'),
+  createModel: (payload) => http.post('/ai/admin/models', payload),
+  updateModel: (id, payload) => http.put(`/ai/admin/models/${id}`, payload),
+  removeModel: (id) => http.delete(`/ai/admin/models/${id}`),
+  testModel: (id) => http.post(`/ai/admin/models/${id}/test`),
+  prompts: (params) => http.get('/ai/admin/prompts', { params }),
+  createPrompt: (payload) => http.post('/ai/admin/prompts', payload),
+  updatePrompt: (id, payload) => http.put(`/ai/admin/prompts/${id}`, payload),
+  removePrompt: (id) => http.delete(`/ai/admin/prompts/${id}`),
+  quota: () => http.get('/ai/admin/quota'),
+  updateQuota: (payload) => http.put('/ai/admin/quota', payload)
+}
+
+export const aiGenerationApi = {
+  page: (params) => http.get('/ai/generations', { params }),
+  detail: (id) => http.get(`/ai/generations/${id}`),
+  create: (payload) => http.post('/ai/generations', payload),
+  accept: (id, itemIds) => http.post(`/ai/generations/${id}/accept`, { itemIds }),
+  remove: (id) => http.delete(`/ai/generations/${id}`)
+}
+
+export const aiInsightApi = {
+  review: (payload) => http.post('/ai/reviews', payload),
+  reviewHistory: (caseId) => http.get('/ai/reviews', { params: { caseId } }),
+  report: (payload) => http.post('/ai/reports', payload),
+  reportHistory: (planId) => http.get('/ai/reports', { params: { planId } }),
+  latestReport: (planId) => http.get('/ai/reports/latest', { params: { planId } })
+}
+
+export const aiMonitorApi = {
+  logs: (params) => http.get('/ai/monitor/logs', { params }),
+  stats: () => http.get('/ai/monitor/stats'),
+  tokensByScene: (days) => http.get('/ai/monitor/tokens-by-scene', { params: { days } })
+}
+
