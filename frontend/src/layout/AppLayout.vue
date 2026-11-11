@@ -31,7 +31,7 @@
           <span>AI 生成用例</span>
           <el-tag class="menu-ai-tag" size="small" effect="dark" round>AI</el-tag>
         </el-menu-item>
-        <el-menu-item index="/ai/settings">
+        <el-menu-item v-if="isAdmin" index="/ai/settings">
           <el-icon><Setting /></el-icon>
           <span>AI 配置</span>
         </el-menu-item>
@@ -76,6 +76,8 @@ import { useAuthStore } from '../stores/auth'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+const isAdmin = computed(() => auth.user?.role === 'ADMIN')
 
 const activeMenu = computed(() => {
   if (route.path.startsWith('/plans')) {

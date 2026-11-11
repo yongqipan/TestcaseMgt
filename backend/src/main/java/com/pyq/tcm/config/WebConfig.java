@@ -12,9 +12,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
+    private final AdminInterceptor adminInterceptor;
+    private final AiRateLimitInterceptor aiRateLimitInterceptor;
 
-    public WebConfig(AuthInterceptor authInterceptor) {
+    public WebConfig(AuthInterceptor authInterceptor, AdminInterceptor adminInterceptor,
+                     AiRateLimitInterceptor aiRateLimitInterceptor) {
         this.authInterceptor = authInterceptor;
+        this.adminInterceptor = adminInterceptor;
+        this.aiRateLimitInterceptor = aiRateLimitInterceptor;
     }
 
     @Bean
@@ -26,7 +31,14 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/login");
+                .excludePathPatterns("/api/auth/login")
+                .order(1);
+        registry.addInterceptor(adminInterceptor)
+                .addPathPatterns("/api/ai/admin/**")
+                .order(2);
+        registry.addInterceptor(aiRateLimitInterceptor)
+                .addPathPatterns("/api/ai/generations", "/api/ai/reviews", "/api/ai/reports")
+                .order(3);
     }
 
     @Override

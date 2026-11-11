@@ -15,11 +15,15 @@ public class AiProperties {
     private long defaultTokenQuota = 0L;
     private int alertThreshold = 80;
     private String cryptoSecret = "";
+    private boolean allowInsecureCrypto = true;
     private double defaultTemperature = 0.2;
     private int defaultMaxTokens = 2000;
     private String defaultBaseUrl = "https://api.openai.com/v1";
     private int taskPoolSize = 2;
     private int taskQueueCapacity = 20;
+    private int rateLimitMaxRequests = 10;
+    private long rateLimitWindowSeconds = 60;
+    private int maxRequirementLength = 8000;
 
     public int getConnectTimeoutMs() {
         return connectTimeoutMs;
@@ -85,6 +89,14 @@ public class AiProperties {
         this.cryptoSecret = cryptoSecret;
     }
 
+    public boolean isAllowInsecureCrypto() {
+        return allowInsecureCrypto;
+    }
+
+    public void setAllowInsecureCrypto(boolean allowInsecureCrypto) {
+        this.allowInsecureCrypto = allowInsecureCrypto;
+    }
+
     public double getDefaultTemperature() {
         return defaultTemperature;
     }
@@ -123,5 +135,29 @@ public class AiProperties {
 
     public void setTaskQueueCapacity(int taskQueueCapacity) {
         this.taskQueueCapacity = taskQueueCapacity;
+    }
+
+    public int getRateLimitMaxRequests() {
+        return rateLimitMaxRequests;
+    }
+
+    public void setRateLimitMaxRequests(int rateLimitMaxRequests) {
+        this.rateLimitMaxRequests = rateLimitMaxRequests;
+    }
+
+    public long getRateLimitWindowSeconds() {
+        return rateLimitWindowSeconds;
+    }
+
+    public void setRateLimitWindowSeconds(long rateLimitWindowSeconds) {
+        this.rateLimitWindowSeconds = rateLimitWindowSeconds;
+    }
+
+    public int getMaxRequirementLength() {
+        return maxRequirementLength;
+    }
+
+    public void setMaxRequirementLength(int maxRequirementLength) {
+        this.maxRequirementLength = maxRequirementLength;
     }
 }

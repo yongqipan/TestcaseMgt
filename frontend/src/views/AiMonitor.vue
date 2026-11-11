@@ -80,7 +80,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
-import { aiAdminApi, aiMonitorApi } from '../api'
+import { aiMonitorApi } from '../api'
 
 const scenes = [
   { value: 'GENERATE_CASE', label: '用例生成' },
@@ -116,7 +116,7 @@ async function load() {
   try {
     const [statsData, quotaData, logs] = await Promise.all([
       aiMonitorApi.stats(),
-      aiAdminApi.quota(),
+      aiMonitorApi.quota(),
       aiMonitorApi.logs({
         scene: filters.scene,
         status: filters.status,

@@ -38,11 +38,15 @@ tcm:
     default-token-quota: ${AI_DEFAULT_TOKEN_QUOTA:0}
     alert-threshold: ${AI_ALERT_THRESHOLD:80}
     crypto-secret: ${AI_CRYPTO_SECRET:}
+    allow-insecure-crypto: ${AI_ALLOW_INSECURE_CRYPTO:true}
     default-temperature: ${AI_DEFAULT_TEMPERATURE:0.2}
     default-max-tokens: ${AI_DEFAULT_MAX_TOKENS:2000}
     default-base-url: ${AI_DEFAULT_BASE_URL:https://api.openai.com/v1}
     task-pool-size: ${AI_TASK_POOL_SIZE:2}
     task-queue-capacity: ${AI_TASK_QUEUE_CAPACITY:20}
+    rate-limit-max-requests: ${AI_RATE_LIMIT_MAX_REQUESTS:10}
+    rate-limit-window-seconds: ${AI_RATE_LIMIT_WINDOW_SECONDS:60}
+    max-requirement-length: ${AI_MAX_REQUIREMENT_LENGTH:8000}
 
 logging:
   level:

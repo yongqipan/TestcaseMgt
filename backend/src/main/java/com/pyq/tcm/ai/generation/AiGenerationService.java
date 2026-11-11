@@ -5,6 +5,7 @@ import com.pyq.tcm.ai.client.AiChatResult;
 import com.pyq.tcm.ai.client.AiException;
 import com.pyq.tcm.ai.client.ChatMessage;
 import com.pyq.tcm.ai.client.OpenAiChatClient;
+import com.pyq.tcm.ai.config.AiProperties;
 import com.pyq.tcm.ai.dto.GenerationRequest;
 import com.pyq.tcm.ai.entity.AiGeneration;
 import com.pyq.tcm.ai.entity.AiGenerationItem;
@@ -49,6 +50,7 @@ public class AiGenerationService {
     private final AiPromptService promptService;
     private final AiJsonExtractor jsonExtractor;
     private final OpenAiChatClient chatClient;
+    private final AiProperties aiProperties;
 
     public AiGenerationService(AiGenerationRepository generationRepository,
                                AiGenerationItemRepository itemRepository,
@@ -56,7 +58,8 @@ public class AiGenerationService {
                                ModuleRepository moduleRepository,
                                AiPromptService promptService,
                                AiJsonExtractor jsonExtractor,
-                               OpenAiChatClient chatClient) {
+                               OpenAiChatClient chatClient,
+                               AiProperties aiProperties) {
         this.generationRepository = generationRepository;
         this.itemRepository = itemRepository;
         this.projectRepository = projectRepository;
@@ -64,6 +67,7 @@ public class AiGenerationService {
         this.promptService = promptService;
         this.jsonExtractor = jsonExtractor;
         this.chatClient = chatClient;
+        this.aiProperties = aiProperties;
     }
 
     @Transactional
@@ -73,6 +77,9 @@ public class AiGenerationService {
         }
         if (request.getRequirement() == null || request.getRequirement().isBlank()) {
             throw new BizException("需求描述不能为空");
+        }
+        if (request.getRequirement().length() > aiProperties.getMaxRequirementLength()) {
+            throw new BizException("需求描述过长，最多 " + aiProperties.getMaxRequirementLength() + " 个字符");
         }
         if (request.getModuleId() != null
                 && !moduleRepository.existsById(request.getModuleId())) {

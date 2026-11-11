@@ -29,7 +29,11 @@ public class AiCryptoService {
     public AiCryptoService(AiProperties properties) {
         String secret = properties.getCryptoSecret();
         if (secret == null || secret.isBlank()) {
-            log.warn("tcm.ai.crypto-secret 未配置，使用内置兜底密钥。生产环境请通过环境变量覆盖。");
+            if (!properties.isAllowInsecureCrypto()) {
+                throw new IllegalStateException(
+                        "未配置 tcm.ai.crypto-secret，禁止使用内置密钥。请设置 AI_CRYPTO_SECRET 环境变量后重启。");
+            }
+            log.warn("tcm.ai.crypto-secret 未配置，使用内置兜底密钥。生产环境请通过环境变量 AI_CRYPTO_SECRET 覆盖。");
             secret = FALLBACK_SECRET;
         }
         this.keySpec = new SecretKeySpec(sha256(secret), "AES");

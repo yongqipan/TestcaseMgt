@@ -71,7 +71,7 @@ const routes = [
         path: 'ai/settings',
         name: 'ai-settings',
         component: () => import('../views/AiSettings.vue'),
-        meta: { title: 'AI 模型配置' }
+        meta: { title: 'AI 模型配置', requiresAdmin: true }
       },
       {
         path: 'ai/monitor',
@@ -96,6 +96,12 @@ router.beforeEach((to) => {
   }
   if (to.name === 'login' && token) {
     return { name: 'dashboard' }
+  }
+  if (to.meta.requiresAdmin) {
+    const user = JSON.parse(localStorage.getItem('tcm_user') || 'null')
+    if (user?.role !== 'ADMIN') {
+      return { name: 'dashboard' }
+    }
   }
   document.title = to.meta.title ? `${to.meta.title} · 测试用例管理系统` : '测试用例管理系统'
   return true

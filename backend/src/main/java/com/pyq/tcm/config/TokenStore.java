@@ -12,14 +12,14 @@ public class TokenStore {
 
     private static final long TTL_HOURS = 12;
 
-    public record TokenInfo(Long userId, String username, LocalDateTime expiresAt) {
+    public record TokenInfo(Long userId, String username, String role, LocalDateTime expiresAt) {
     }
 
     private final Map<String, TokenInfo> tokens = new ConcurrentHashMap<>();
 
-    public String issue(Long userId, String username) {
+    public String issue(Long userId, String username, String role) {
         String token = UUID.randomUUID().toString().replace("-", "");
-        tokens.put(token, new TokenInfo(userId, username, LocalDateTime.now().plusHours(TTL_HOURS)));
+        tokens.put(token, new TokenInfo(userId, username, role, LocalDateTime.now().plusHours(TTL_HOURS)));
         cleanupExpired();
         return token;
     }

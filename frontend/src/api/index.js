@@ -82,6 +82,7 @@ export const aiInsightApi = {
 export const aiMonitorApi = {
   logs: (params) => http.get('/ai/monitor/logs', { params }),
   stats: () => http.get('/ai/monitor/stats'),
-  tokensByScene: (days) => http.get('/ai/monitor/tokens-by-scene', { params: { days } })
+  tokensByScene: (days) => http.get('/ai/monitor/tokens-by-scene', { params: { days } }),
+  quota: () => http.get('/ai/monitor/quota')
 }
 

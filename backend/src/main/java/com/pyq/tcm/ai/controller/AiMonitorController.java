@@ -1,7 +1,9 @@
 package com.pyq.tcm.ai.controller;
 
 import com.pyq.tcm.ai.entity.AiCallLog;
+import com.pyq.tcm.ai.entity.AiQuota;
 import com.pyq.tcm.ai.monitor.AiMonitorService;
+import com.pyq.tcm.ai.quota.AiQuotaService;
 import com.pyq.tcm.common.ApiResponse;
 import com.pyq.tcm.common.PageResult;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +16,11 @@ import java.util.Map;
 public class AiMonitorController {
 
     private final AiMonitorService monitorService;
+    private final AiQuotaService quotaService;
 
-    public AiMonitorController(AiMonitorService monitorService) {
+    public AiMonitorController(AiMonitorService monitorService, AiQuotaService quotaService) {
         this.monitorService = monitorService;
+        this.quotaService = quotaService;
     }
 
     @GetMapping("/logs")
@@ -37,5 +41,10 @@ public class AiMonitorController {
     @GetMapping("/tokens-by-scene")
     public ApiResponse<List<Map<String, Object>>> tokensByScene(@RequestParam(defaultValue = "7") int days) {
         return ApiResponse.ok(monitorService.tokensByScene(days));
+    }
+
+    @GetMapping("/quota")
+    public ApiResponse<AiQuota> quota() {
+        return ApiResponse.ok(quotaService.current());
     }
 }
