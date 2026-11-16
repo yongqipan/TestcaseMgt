@@ -38,18 +38,13 @@ public class AiMonitorService {
     public Map<String, Object> todayStats() {
         LocalDateTime from = LocalDate.now().atStartOfDay();
         LocalDateTime to = from.plusDays(1);
-        Object[] summary = callLogRepository.summaryBetween(from, to);
-        long calls = 0;
-        double avgLatency = 0;
-        if (summary != null && summary.length == 2 && summary[0] != null) {
-            calls = ((Number) summary[0]).longValue();
-            avgLatency = summary[1] == null ? 0 : ((Number) summary[1]).doubleValue();
-        }
+        long calls = callLogRepository.countByCreatedAtBetween(from, to);
+        Double avgLatency = callLogRepository.avgLatencyBetween(from, to);
         Long tokens = callLogRepository.sumTokensBetween(from, to);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("calls", calls);
         result.put("totalTokens", tokens == null ? 0L : tokens);
-        result.put("avgLatencyMs", Math.round(avgLatency));
+        result.put("avgLatencyMs", avgLatency == null ? 0 : Math.round(avgLatency));
         return result;
     }
 

@@ -31,8 +31,8 @@ public interface AiCallLogRepository extends JpaRepository<AiCallLog, Long> {
     @Query("select sum(l.totalTokens) from AiCallLog l where l.createdAt between :from and :to")
     Long sumTokensBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
-    @Query("select count(l), avg(l.latencyMs) from AiCallLog l where l.createdAt between :from and :to")
-    Object[] summaryBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+    @Query("select avg(l.latencyMs) from AiCallLog l where l.createdAt between :from and :to")
+    Double avgLatencyBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     long countByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 }
